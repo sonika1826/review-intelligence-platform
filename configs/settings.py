@@ -1,0 +1,9 @@
+APP_NAME = "SentiScope AI"
+
+VERSION = "0.1.0"
+
+RANDOM_STATE = 42
+
+LOG_LEVEL = "INFO"
+
+DEFAULT_ENCODING = "utf-8"
