@@ -1,5 +1,5 @@
 """
-Fast and balanced IMDB dataset loader for SentiScope AI.
+Balanced and optimized IMDB dataset loader for SentiScope AI.
 """
 
 from __future__ import annotations
@@ -19,17 +19,15 @@ class IMDBLoader(BaseLoader):
 
     Features:
         - Balanced positive/negative sampling
+        - Globally unique review IDs
         - Reproducible sampling
         - Configurable max_reviews
-        - Support for train/test directories
     """
 
     RANDOM_STATE = 42
 
     def load(self) -> pd.DataFrame:
-        """
-        Load a balanced IMDB sample.
-        """
+        """Load a balanced IMDB sample."""
 
         logger.info("=" * 60)
         logger.info("Loading IMDB dataset...")
@@ -42,12 +40,12 @@ class IMDBLoader(BaseLoader):
         # --------------------------------------------------
 
         if self.max_reviews is None:
-            target_total = None
+            target_per_sentiment = None
         else:
-            target_total = self.max_reviews
+            target_per_sentiment = self.max_reviews // 2
 
         # --------------------------------------------------
-        # Collect files without reading their contents
+        # Collect review files
         # --------------------------------------------------
 
         positive_files: list[Path] = []
@@ -65,7 +63,7 @@ class IMDBLoader(BaseLoader):
             negative_files.extend((split_path / "neg").glob("*.txt"))
 
         # --------------------------------------------------
-        # Reproducible random sampling
+        # Reproducible shuffle
         # --------------------------------------------------
 
         rng = random.Random(self.RANDOM_STATE)
@@ -73,19 +71,20 @@ class IMDBLoader(BaseLoader):
         rng.shuffle(positive_files)
         rng.shuffle(negative_files)
 
-        if target_total is None:
+        # --------------------------------------------------
+        # Select balanced sample
+        # --------------------------------------------------
+
+        if target_per_sentiment is None:
 
             selected_positive = positive_files
             selected_negative = negative_files
 
         else:
 
-            positive_count = target_total // 2
-            negative_count = target_total // 2
+            selected_positive = positive_files[:target_per_sentiment]
 
-            selected_positive = positive_files[:positive_count]
-
-            selected_negative = negative_files[:negative_count]
+            selected_negative = negative_files[:target_per_sentiment]
 
         logger.info(
             "Selected %d positive reviews.",
@@ -108,7 +107,7 @@ class IMDBLoader(BaseLoader):
             records.append(
                 self._read_review(
                     review_file,
-                    "positive",
+                    sentiment="positive",
                 )
             )
 
@@ -117,7 +116,7 @@ class IMDBLoader(BaseLoader):
             records.append(
                 self._read_review(
                     review_file,
-                    "negative",
+                    sentiment="negative",
                 )
             )
 
@@ -154,21 +153,41 @@ class IMDBLoader(BaseLoader):
         review_file: Path,
         sentiment: str,
     ) -> dict:
-        """
-        Read one IMDB review file.
-        """
+        """Read one IMDB review and create a unique ID."""
+
+        # --------------------------------------------------
+        # Extract rating from filename
+        #
+        # Example:
+        # 12345_8.txt
+        # --------------------------------------------------
 
         filename = review_file.stem
 
-        review_id, rating_text = filename.rsplit(
-            "_",
-            1,
-        )
-
         try:
+            review_number, rating_text = filename.rsplit(
+                "_",
+                1,
+            )
+
             rating = int(rating_text)
+
         except ValueError:
+            review_number = filename
             rating = None
+
+        # --------------------------------------------------
+        # Create globally unique review ID
+        # --------------------------------------------------
+
+        split = review_file.parent.parent.name
+        sentiment_folder = review_file.parent.name
+
+        review_id = f"imdb_{split}_" f"{sentiment_folder}_" f"{review_number}"
+
+        # --------------------------------------------------
+        # Read review text
+        # --------------------------------------------------
 
         review_text = review_file.read_text(
             encoding="utf-8",
