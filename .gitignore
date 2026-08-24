@@ -44,3 +44,39 @@ htmlcov/
 
 # Windows
 Thumbs.db
+
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Pytest
+.pytest_cache/
+
+# Logs
+logs/
+*.log
+
+# Raw datasets
+data/raw/
+
+# Processed data
+data/processed/
+
+# Generated artifacts
+artifacts/
+
+# Models
+models/
+
+# Reports
+reports/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+.env.*
